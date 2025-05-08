@@ -53,7 +53,9 @@
 </head>
 <body>
     <h1>chat room</h1>
-    <ul class="container" id="msgDisplay"></ul>
+    <ul class="container" id="msgDisplay">
+        <div class="typing"></div>
+    </ul>
     <form id="msgForm">
         <input type="text" id="msgInput" name="msgInput">
         <button>Send</button>
@@ -65,22 +67,47 @@
         const msgContainer = document.getElementById('msgDisplay')
         const form = document.getElementById('msgForm')
         const inputText = document.getElementById('msgInput')
+        const typingSign = document.querySelector('.typing')
 
-        socket.on('send message', (messageData)=>{
-            console.log(messageData)
+
+
+let sender = null;
+
+
+// joining
+         socket.on('join', username =>{
+             console.log(username)
+         })
+
+         socket.on('typing', typer => {
+            console.log(typer, ' is typing')
+         })
+
+        socket.on('receive message', (message)=>{
+            sender = message.sender
+            displayMessage(message.sender, message.msg, 'incomming')
         })
 
 
         form.addEventListener('submit', (e)=>{
             e.preventDefault()
-            displayMessage(inputText.value, 'outgoing')
+            displayMessage('me',inputText.value, 'outgoing')
+            const message = inputText.value
+            socket.emit('send massage', message)
+            inputText.value = ''
         })
 
-        function displayMessage(msg, type){
+        // on typing 
+        inputText.addEventListener('input', (e)=>{
+            e.preventDefault()
+            const typer = sender
+            socket.emit('typing', typer)
+        })
+
+        function displayMessage(me, msg, type){
             const li = document.createElement('li')
             li.classList.add(type)
-            li.textContent = msg
-            socket.emit('send massage', msg)
+            li.innerHTML =`<strong>${me}:</strong> ${msg}`
             msgContainer.appendChild(li)
         }
         

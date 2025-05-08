@@ -8,21 +8,23 @@ import pgSession from "connect-pg-simple"
 import methodOverride from "method-override"
 import http from "http"
 import sharedSession from "express-socket.io-session"
-
+import dotenv from "dotenv"
+import { log } from "console"
 
 
 const app = e()
+dotenv.config()
 
 const server = http.createServer(app)
 const io = new Server(server)
 
  const {Pool} = pkg;
  const pool = new Pool({
-    user : process.env.USERNAME||'postgres',
-    host : process.env.HOST||'localhost',
-    database : process.env.DATABASE || 'neverGiveUp',
-    password : process.env.PASSWORD || 'Zohrajan10@',
-    port : process.env.PORT || 5432
+    user : 'postgres',
+    host :'localhost',
+    database : 'neverGiveUp',
+    password :  'Zohrajan10@',
+    port :  5432
  });
 
 // session setup
@@ -36,9 +38,12 @@ const sessionMiddleware = session({
     secret : 'secretKey',
     resave : false,
     saveUninitialized : true,
-    cookie : {
-        secure : false 
-    }
+    cookie: {
+        httpOnly: true,
+        secure: false,  // Ensure you're using HTTPS
+        sameSite: 'Strict',  // 'Strict' prevents cross-site cookie sharing
+        maxAge: 1000 * 60 * 60 // Example: session expires in 1 hour
+      }
 })
  app.use(sessionMiddleware);
 
@@ -48,7 +53,6 @@ io.use(sharedSession(sessionMiddleware,{
 }))
 
 io.on('connection', async(socket)=>{
-    console.log(socket.id, ' connected ')
     const session = socket.handshake.session;
 
     if(!session.userId){
@@ -56,22 +60,37 @@ io.on('connection', async(socket)=>{
         return socket.disconnect()
     }
 
-    const user = await pool.query('SELECT * FROM users where id = $1', [session.userId])
 
+    let user = await pool.query('SELECT * FROM users where id = $1', [session.userId])
     const loggedInUser = user.rows[0]
 
-    socket.on('send message', (msg)=>{
-        const messageData = {
-            userid : loggedInUser.id,
-            username : loggedInUser.firstname,
-            text : msg,
-            massage_sent_at : Date.now()
+    // creating a room 
+    const userRoom = `room${loggedInUser.id}`
+    // tells the socket to join the connected socket(user )to the userRoom
+    socket.join(userRoom)
+    const joinInfo=  `${loggedInUser.firstname} has joined the room`;
+    // declaring to other users
+    socket.to(userRoom).emit('join', joinInfo)
+    console.log(loggedInUser.firstname, ' joined ' + userRoom)
+    // storing the  connected user info for later use
+    socket.data.user = loggedInUser.firstname
+    socket.data.room = userRoom
+
+//   on sending message
+    socket.on('send massage', (msg)=>{
+        const senderInfo = {
+            senderId : loggedInUser.id,
+            sender : loggedInUser.firstname,
+            msg : msg,
         }
-        
-        io.emit('send message', messageData)
+        socket.broadcast.emit('receive message', senderInfo)
     })
 
-    console.log('user connected via socket to session. active user id: ', session.userId)
+//  typing user
+    socket.on('typing', username =>{
+        console.log(username, ' is typing')
+        socket.broadcast.emit('typing', username)
+    })
 
 })
 
@@ -154,9 +173,9 @@ app.post('/signup', upload.single('userImage'),async(req,res)=>{
        return res.send('this account already exists ! please log in ! ')
      }
 
-     const profilepicture = req.file? path.join('uploads/', req.file.filename): user.rows[0].postimage
+     const profilepicture = req.file? path.join('uploads/', req.file.filename): null
 
-     const newUser = await pool.query('INSERT INTO users (firstname, email) VALUES(LOWER($1), LOWER($2), $3) RETURNING *;', [body.fname, body.email, profilepicture])
+     const newUser = await pool.query('INSERT INTO users (firstname, email, profilepicture) VALUES(LOWER($1), LOWER($2), $3) RETURNING *;', [body.fname, body.email, profilepicture])
 
      if(newUser.rows.length){
         req.session.userId = newUser.rows[0].id
@@ -302,6 +321,6 @@ function authenticate(req,res,next){
 //     console.log('created data ', data.rows)
 //  }).catch((err) => console.log(err));
 
-const port = process.env.port || 3000
+const port = process.env.PORT || 3000
 
 server.listen(port, ()=> console.log('connected'))
