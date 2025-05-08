@@ -1,0 +1,28 @@
+<%- include('../partials/header.ejs')  %>
+
+<div class="container">
+    <h1>Update <%= post.title %></h1>
+    <form action="/post/<%=post.id %>/update?_method=PUT" method="post" enctype="multipart/form-data">
+        <label for="title"> UPDATE title
+            <input type="text" name="title" value="<%= post.title%>" id="title">
+        </label><br><br>
+        <label for="description"> UPDATE description
+            <input type="text" name="description" value="<%= post.description %>" id="description">
+        </label><br><br>
+        <label for="postImage"> UPDATE post Image(optional)
+            <input type="file" name="postImage" accept="image/*" value="<%= post.postimage %>" id="postImage">
+        </label><br><br>
+        <button>Update</button>
+    </form>
+</div>
+
+<script>
+     function largen(){
+        // e.preventDefault()
+        const desc = document.getElementById('description')
+        desc.clientHeight = 'auto'
+        desc.clientHeight = `${desc.scrollHeight}px`
+    }
+</script>    
+</body>
+</html>

@@ -1,0 +1,16 @@
+<%-include('../partials/header.ejs') %>
+    <h1>create post</h1>
+    <form action="/post/add" method="post" enctype="multipart/form-data">
+        <label for="title"> Add title
+            <input type="text" name="title" required id="title">
+        </label><br><br>
+        <label for="description"> Add description
+            <input type="text" name="description" required id="description">
+        </label><br><br>
+        <label for="postImage"> Add post Image
+            <input type="file" name="postImage" accept="image/*" required id="postImage" placeholder="">
+        </label><br><br>
+        <button>Post</button>
+    </form>
+</body>
+</html>

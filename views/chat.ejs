@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+       *{
+            font-size: 20px;
+        }
+
+        #msgDisplay{
+            padding: 0;
+            width: 800px;
+            height: 89vh;
+            /* height: auto; */
+            margin: 0 auto;
+            outline: 2px solid #eeee;
+            overflow: hidden;
+        }
+
+        #msgForm{
+            display: flex;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        input{
+             width: 730px;
+            margin: 0 auto;
+            font-size: 20px;
+        }
+        li{
+            list-style: none;
+            padding: 5px !important;
+            margin: 0;
+            width: 50% !important;
+            margin-bottom: 3px;
+        }
+      
+        .outgoing{
+            background-color: #555;
+            color: #fff;
+            margin-left: auto;
+        }
+
+        .incomming{
+            background-color: #e8e8e8;
+            margin-right: auto;
+            text-align: left;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>chat room</h1>
+    <ul class="container" id="msgDisplay"></ul>
+    <form id="msgForm">
+        <input type="text" id="msgInput" name="msgInput">
+        <button>Send</button>
+    </form>
+
+    <script src="socket.io/socket.io.js"></script>
+    <script>
+        const socket = io() // automatically connects to socket of server
+        const msgContainer = document.getElementById('msgDisplay')
+        const form = document.getElementById('msgForm')
+        const inputText = document.getElementById('msgInput')
+
+        socket.on('send message', (messageData)=>{
+            console.log(messageData)
+        })
+
+
+        form.addEventListener('submit', (e)=>{
+            e.preventDefault()
+            displayMessage(inputText.value, 'outgoing')
+        })
+
+        function displayMessage(msg, type){
+            const li = document.createElement('li')
+            li.classList.add(type)
+            li.textContent = msg
+            socket.emit('send massage', msg)
+            msgContainer.appendChild(li)
+        }
+        
+    </script>
+</body>
+</html>

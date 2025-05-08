@@ -1,0 +1,23 @@
+<%- include('../partials/header.ejs')  %>
+    <h1> home route</h1> <a href="/post/new">Add POST</a>
+    <div class="container">
+        <% if(locals.posts){ %>
+              <% posts.forEach((post)=>{ %>
+                   <h4><%= post.title %></h4>
+                   <p><%= post.description %></p>
+                   <img class="descriptionImage" src="<%= post.postimage %>" alt="">
+                   <div class="buttons" style="display: flex; gap: 20px;">
+                    <% console.log(loggedinUser, post) %>
+                    <% if(locals.loggedinUser && locals.loggedinUser.firstname === post.author){ %>
+                        <a href="/post/<%= post.id %>/update" class="edit">Edit</a>
+                    <form action="/post/<%=post.id%>/delete?_method=DELETE" method="post">
+                        <button>Delete</button>
+                    </form>
+                    <%} %>
+                  
+                   </div>
+               <% })%>
+        <% } %>
+    </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+
+.container{
+    max-width: 800px;
+    margin: 0 auto;
+}
+.descriptionImage{
+    width: 600px;
+    max-height: 500px;
+    height: auto;
+    border-radius: 5px;
+    outline: 2px solid #747070;
+}
