@@ -65,12 +65,11 @@ io.on('connection', async(socket)=>{
     const loggedInUser = user.rows[0]
 
     // creating a room 
-    const userRoom = `room${loggedInUser.id}`
+    const userRoom = `chatRoom`
     // tells the socket to join the connected socket(user )to the userRoom
     socket.join(userRoom)
-    const joinInfo=  `${loggedInUser.firstname} has joined the room`;
     // declaring to other users
-    socket.to(userRoom).emit('join', joinInfo)
+    socket.to(userRoom).emit('join', `${loggedInUser.firstname} has joined the room`)
     console.log(loggedInUser.firstname, ' joined ' + userRoom)
     // storing the  connected user info for later use
     socket.data.user = loggedInUser.firstname
@@ -87,9 +86,14 @@ io.on('connection', async(socket)=>{
     })
 
 //  typing user
-    socket.on('typing', username =>{
-        console.log(username, ' is typing')
-        socket.broadcast.emit('typing', username)
+    socket.on('typing', data =>{
+        socket.broadcast.emit('typing', data)
+    })
+
+    // stop typing
+    socket.on('stop typing', data =>{
+        console.log(data)
+        socket.to(userRoom).emit('hide typing', data)
     })
 
 })
