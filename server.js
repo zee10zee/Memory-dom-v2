@@ -1,57 +1,19 @@
 import {Server} from "socket.io"
-import e, { urlencoded } from "express"
-import pkg from "pg"
-import multer, { diskStorage } from "multer"
-import path from "path"
-import session from "express-session"
-import pgSession from "connect-pg-simple"
-import methodOverride from "method-override"
 import http from "http"
 import sharedSession from "express-socket.io-session"
 import dotenv from "dotenv"
-import { log } from "console"
-
-
-const app = e()
+import sessionMiddleware from "./middlewares/pgsession.js"
+import app from "./express.js"
+import pool from "./db/db.js"
 dotenv.config()
-
 const server = http.createServer(app)
 const io = new Server(server)
-
- const {Pool} = pkg;
- const pool = new Pool({
-    user : 'postgres',
-    host :'localhost',
-    database : 'neverGiveUp',
-    password :  'Zohrajan10@',
-    port :  5432
- });
-
-// session setup
-const pgStore = pgSession(session) // stores session in db/ class session
-const sessionMiddleware = session({
-    store :  new pgStore({
-      pool : pool,
-      tableName : 'session',
-      createTableIfMissing : true
-    }),
-    secret : 'secretKey',
-    resave : false,
-    saveUninitialized : true,
-    cookie: {
-        httpOnly: true,
-        secure: false,  // Ensure you're using HTTPS
-        sameSite: 'Strict',  // 'Strict' prevents cross-site cookie sharing
-        maxAge: 1000 * 60 * 60 // Example: session expires in 1 hour
-      }
-})
- app.use(sessionMiddleware);
-
 // share the session with socket.io
 io.use(sharedSession(sessionMiddleware,{
     autoSave : true
 }))
 
+const activeUsers = new Map()
 io.on('connection', async(socket)=>{
     const session = socket.handshake.session;
 
@@ -59,22 +21,40 @@ io.on('connection', async(socket)=>{
         console.log('unauthenticated user attempted socket connection')
         return socket.disconnect()
     }
-
-
     let user = await pool.query('SELECT * FROM users where id = $1', [session.userId])
     const loggedInUser = user.rows[0]
+    console.log(loggedInUser.firstname , ' connected')
+    const user_info = {
+        username : loggedInUser.firstname,
+        id : loggedInUser.id,
+        user_profile : loggedInUser.profilepicture
+    }
 
+    socket.on('user-join', (user_info) =>{
+        activeUsers.set(socket.id, user_info)
+    })
     // creating a room 
     const userRoom = `chatRoom`
     // tells the socket to join the connected socket(user )to the userRoom
     socket.join(userRoom)
     // declaring to other users
     socket.to(userRoom).emit('join', `${loggedInUser.firstname} has joined the room`)
-    console.log(loggedInUser.firstname, ' joined ' + userRoom)
     // storing the  connected user info for later use
     socket.data.user = loggedInUser.firstname
     socket.data.room = userRoom
 
+    // one to one chat //
+
+    socket.on('send-private-message', (data)=>{
+        console.log(data)
+        const senderInfo = {
+            from : loggedInUser.firstname,
+            msg : data.msg,
+        }
+        socket.to(data.reciepientId).emit('receive-message', senderInfo)
+    })
+
+    // ***8********************
 //   on sending message
     socket.on('send massage', (msg)=>{
         const senderInfo = {
@@ -96,235 +76,13 @@ io.on('connection', async(socket)=>{
         socket.to(userRoom).emit('hide typing', data)
     })
 
+    socket.on('disconnect', () =>{
+        console.log(socket.data.user, ' disconnected')
+        socket.to(userRoom).emit('user-disconnect', loggedInUser.firstname)
+    })
+
+    // private message events
 })
-
-
-const storage = diskStorage({
-    destination : (req,file,cb)=>{
-        cb(null, 'public/uploads')
-    },
-    filename : (req,file,cb)=>{
-        const customName = Date.now()
-        cb(null, customName + "-" + file.originalname)
-    }
-});
-
-const upload = multer({storage : storage})
-app.use(e.urlencoded({extended : true}))
-app.use(e.static('public'))
-app.use('/uploads',e.static(path.resolve('public/uploads')));
-app.use(methodOverride('_method'));
-
-async function validate(req,res,next){
-    if(req.session.userId){
-        const loggedInUser = await pool.query('SELECT * FROM users WHERE id = $1', [req.session.userId])
-        const user = loggedInUser.rows[0]
-        res.locals.loggedinUser = user;
-    }else{
-         console.log('no session')
-    }
-    next()
-};
-
-app.use(validate)
-
-
-
-// multer config
-
-app.get('/', async(req,res)=>{
-    const postsAndUsers = await pool.query('SELECT posts.* , users.firstname AS author, users.email FROM posts LEFT JOIN users ON posts.userid = users.id')
-    const posts = postsAndUsers.rows
-        res.render('index.ejs', {posts: posts})
-});
-
-app.get('/signUp', (req,res)=>{
-    res.render('signup.ejs')
-})
-
-app.get('/login', (req,res)=>{
-        res.render('login.ejs')
-})
-
-app.post('/login', async(req,res)=>{
-    const {firstname, email} = req.body
-   try{
-     // if user exists in db with these credentials // CHECK DB NOT session
-     const foundUser = await pool.query('SELECT * FROM users WHERE firstname = $1 AND email = $2;',[firstname, email])
-
-     if(foundUser.rows.length > 0){
-         const user = foundUser.rows[0]
-         req.session.userId = user.id
-         console.log('welcome back ', user)
-         res.redirect('/')
-     }else{
-         return res.send('please sign up first')
-     }
-   }catch(err){console.error(err)}
-})
-
-
-app.post('/signup', upload.single('userImage'),async(req,res)=>{
-   const body = {
-     fname : req.body.firstname,
-     email : req.body.email,
-   }
-
-     try{
-        const user = await pool.query('SELECT * FROM users WHERE firstname = $1 AND email = $2', [body.fname, body.email]);
-
-     if(user.rows.length > 0){
-       return res.send('this account already exists ! please log in ! ')
-     }
-
-     const profilepicture = req.file? path.join('uploads/', req.file.filename): null
-
-     const newUser = await pool.query('INSERT INTO users (firstname, email, profilepicture) VALUES(LOWER($1), LOWER($2), $3) RETURNING *;', [body.fname, body.email, profilepicture])
-
-     if(newUser.rows.length){
-        req.session.userId = newUser.rows[0].id
-        console.log('user success created, welcome ', newUser.rows[0].firstname)
-        res.redirect('/')
-     }else{
-        console.log('user creation error !')
-     }
-     }catch(err){
-        console.log(err)
-     }
-})
-
-// log out
-app.post('/logout', (req,res)=>{
-    if(req.session.userId){
-        req.session.destroy(err =>{
-            if(err){
-                console.error(err)
-                return res.send('session failure ', err)
-            }
-
-            res.clearCookie('connect.sid')
-            console.log('good bye, user')
-            res.redirect('/')
-        })
-    }
-})
-
-
-app.post('/uploadProfile/:id', upload.single('userImage'), async(req,res)=>{
-    const id = parseInt(req.params.id)
-   try{
-    if(!req.session.userId || req.session.userId !== id){
-        console.log('unauthorized ! ')
-        return res.send('unauthorized')
-    }
-
-    if(req.file){
-        const selectedProfile = path.join('uploads/', req.file.filename)
-        const uploadedPhoto = await pool.query('UPDATE users SET profilepicture =  $1 WHERE id = $2 RETURNING *;', [selectedProfile, id]);
-        
-        if(uploadedPhoto.rows.length > 0){
-            console.log('upload success')
-            res.redirect('/')
-        }else{
-            console.error('error failure')
-            return res.send('failure uplaod')
-        }
-    }
-   }catch(err){
-     console.log(err)
-   }
-})
-
-
-// POSTS
-
-app.get('/post/new', authenticate, (req,res)=>{
-    res.render('newPost.ejs')
-})
-
-app.post('/post/add', authenticate, upload.single('postImage'),async(req,res)=>{
-    const {title,description} = req.body
-    console.log(title,description)
-    const postImage = path.join('uploads/',req.file.filename)
-
-    try{
-          //insert post
-    const newPost = await pool.query('INSERT INTO posts (title, description, postImage, userid) VALUES(LOWER($1),LOWER($2),$3, $4) RETURNING *', [title, description, postImage, req.session.userId])
-    
-    if(newPost.rows.length > 0){
-        console.log('post success added')
-        res.redirect('/')
-    }else{
-        return console.log('post insertion failure !')
-    }
-    }catch(err){
-        console.log(err)
-    }
-});
-
-app.get('/post/:id/update', authenticate, async(req,res)=>{
-    const id = parseInt(req.params.id)
-   const updatingUser = await pool.query('SELECT * FROM posts where id = $1', [id])
-   if(updatingUser.rows[0]){
-    res.render('updatePost.ejs', {post : updatingUser.rows[0]})
-   }else{
-       console.log('not found post !')
-       return res.send('post not found')
-   }
-});
-
-// POSSIBLE ERRORS : multer error /unexpected field = if name of the file in the form be called wrong in the single() method
-app.put('/post/:id/update', upload.single('postImage'), async(req,res)=>{
-    const id  = parseInt(req.params.id)
-    const updateBody = {
-        title : req.body.title.trim(),
-        description : req.body.description.trim(),
-    }
-    const currentpost = await pool.query('select * from posts where id = $1', [id])
-     //if no image update, keep the prevous image 
-     const profile = req.file? path.join('uploads/', req.file.filename) : currentpost.rows[0].postimage
-
-     const updatedPost = await pool.query('UPDATE posts SET title = $1, description = $2, postimage = $3 WHERE id = $4 RETURNING *', [updateBody.title, updateBody.description, profile, id])
-
-     if(updatedPost.rows.length > 0){
-        console.log('post update success')
-        res.redirect('/')
-     }else{
-        console.log('failure update')
-        return res.send('failure update')
-     }
-})
-
-app.delete('/post/:id/delete', authenticate, async(req,res)=>{
-    const id = req.params.id
-    const deletedPost = await pool.query('DELETE FROM posts where id = $1 RETURNING *', [id])
-    if(deletedPost.rows.length> 0){
-        console.log('post deleted success')
-        res.redirect('/')
-    }else{
-        console.log('failure deletion of post')
-        res.send('failure deletion')
-    }
-})
-
-
-// chat home
-
-app.get('/chatroom', (req,res)=>{
-    res.render('chat.ejs')
-})
-function authenticate(req,res,next){
-    if(req.session.userId){
-       next()
-    }else{
-      res.redirect('/login')
-    }
- }
-
-//  pool.query('CREATE TABLE posts (id SERIAL PRIMARY KEY, title VARCHAR(50), description TEXT, postImage TEXT, userId INT REFERENCES users(id) ON DELETE CASCADE)').then((data)=>{
-//     console.log('created data ', data.rows)
-//  }).catch((err) => console.log(err));
 
 const port = process.env.PORT || 3000
-
 server.listen(port, ()=> console.log('connected'))

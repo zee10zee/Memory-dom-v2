@@ -1,13 +1,19 @@
 <%- include('../partials/header.ejs')  %>
-    <h1> home route</h1> <a href="/post/new">Add POST</a>
+<main>
+    <div class="left"> <h3>Chat Rooms</h3>
+      <ul>
+        <li><a href="/chatroom">chatRoom</a></li>
+      </ul>  
+    </div>
     <div class="container">
+        <a href="/post/new">Add POST</a>
         <% if(locals.posts){ %>
               <% posts.forEach((post)=>{ %>
                    <h4><%= post.title %></h4>
                    <p><%= post.description %></p>
                    <img class="descriptionImage" src="<%= post.postimage %>" alt="">
                    <div class="buttons" style="display: flex; gap: 20px;">
-                    <% console.log(locals.loggedinUser, post) %>
+                   
                     <% if(locals.loggedinUser && locals.loggedinUser.firstname === post.author){ %>
                         <a href="/post/<%= post.id %>/update" class="edit">Edit</a>
                     <form action="/post/<%=post.id%>/delete?_method=DELETE" method="post">
@@ -19,5 +25,21 @@
                <% })%>
         <% } %>
     </div>
+    <div class="right"><h1>active Users</h1>
+        <% if(locals.activeUsers){ %>
+            <% activeUsers.forEach((user)=>{ %>
+            <ul> 
+                <% if(locals.loggedinUser){ %>
+                    <li class="reciepient" data-user-id="<%= user.id %>"><a href="/oneToOneChat/<%= user.id%>"><%= user.firstname%></a></li> 
+                <% } %>    
+            </ul>
+            <% }) %>
+         <% } %>
+       
+    </div>
+</main>
+  
+<script src="/socket.io/socket.io.js"></script>
+<script defer src="/js/client.js"></script>
 </body>
 </html>

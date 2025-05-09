@@ -86,6 +86,14 @@ let typingTimeout;
              document.querySelector('.joiningAlert').textContent = username
          })
 
+        //  on disconnect
+        socket.on('user-disconnect', (user)=>{
+            console.log(user)
+            setTimeout(() => {
+            document.querySelector('.joiningAlert').textContent = `${user} disonnected`
+            }, 2000);
+        })
+
          socket.on('typing', data => {
             document.querySelector('.typing').textContent = data
          });
@@ -109,15 +117,19 @@ let typingTimeout;
         })
 
         // on typing 
+        let isTyping = false;
         inputText.addEventListener('input', (e)=>{
             e.preventDefault()
             const typer = sender
             socket.emit('typing', 'some one is typing')
-            clearTimeout(typingTimeout)
-            typingTimeout = setTimeout(() => {
-              socket.emit('stop typing', 'time to hide')
-          }, 3000);
+            if(!isTyping){
+                isTyping = true;
+                // clearTimeout(typingTimeout)
+                    typingTimeout = setTimeout(() => {
+                    socket.emit('stop typing', 'time to hide')
+                }, 3000);
 
+            }
         })
 
         function displayMessage(me, msg, type){

@@ -5,50 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/style.css">
     <title>Document</title>
-
-    <style>
-        *{
-            font-size: 20px;
-        }
-
-        .logoutBtn{
-            position: absolute;
-            right: 10px;
-            top: 10px;
-        }
-
-        #profile{
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            outline: 3px solid rgb(152, 152, 155);
-        }
-    </style>
 </head>
 <body>
-  <!-- string.replace(/pattern/g, 'replacement'); -->
-    <% if(locals.loggedinUser){ %>
-        <span>Hello user : <%= loggedinUser.firstname  %></span>
-        <% if(loggedinUser.profilepicture){ %>
-             <a href="/myProfile"><img id="profile" 
-                src="<%=loggedinUser.profilepicture.replace(/\\/g, '/')%>" 
-                alt="profile image"></a>
-         <%}else{ %>
-              <form action="/uploadProfile/<%= loggedinUser.id  %>" method="POST" enctype="multipart/form-data">
-                <input type="file" name="userImage" required accept="image/*" id="userImage">
-                <button>Upload</button>
-              </form>
-         <% }%>
-         <a href="/chatroom">chatRoom</a>
-         <form action="/logout" method="POST">
-            <button class="logoutBtn">Log out</button>
-         </form>
-       
-    <%}else{ %>
-        <a href="/signup">sign up</a>
-        <a href="/login">login</a>
-    <% } %>
-   </div>
+    <div class="container">
+ <!-- string.replace(/pattern/g, 'replacement'); -->
+ <% if(locals.loggedinUser){ %>
+    <span>Hello user : <%= loggedinUser.firstname  %></span>
+    <% if(loggedinUser.profilepicture){ %>
+         <a href="/myProfile"><img id="profile" 
+            src="<%=loggedinUser.profilepicture.replace(/\\/g, '/')%>" 
+            alt="profile image"></a>
+     <%}else{ %>
+          <form action="/uploadProfile/<%= loggedinUser.id  %>" method="POST" enctype="multipart/form-data">
+            <input type="file" name="userImage" required accept="image/*" id="userImage">
+            <button>Upload</button>
+          </form>
+     <% }%>
+    
+     <form action="/logout" method="POST">
+        <button class="logoutBtn">Log out</button>
+     </form>
+   
+<%}else{ %>
+    <a href="/signup">sign up</a>
+    <a href="/login">login</a>
+<% } %>
+</div>
+    </div>
+ 
     
 </body>
 </html>
