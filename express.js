@@ -30,6 +30,8 @@ app.use('/', chatRoutes)
 
 // multer config
 
+// pool.query('ALTER TABLE users ALTER COLUMN password TYPE TEXT').then(()=> console.log('altered table ')).catch((err)=> console.log(err))
+
 app.get('/', async(req,res)=>{
     const postsAndUsers = await pool.query('SELECT posts.* , users.firstname AS author, users.email FROM posts LEFT JOIN users ON posts.userid = users.id')
     const posts = postsAndUsers.rows

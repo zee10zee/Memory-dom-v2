@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/style.css">
+    <title>Document</title>
+
+</head>
+<body>
+  <div class="group-chat-main">
+      <h1>chat room</h1>
+    <ul class="container" id="msgDisplay">
+        <p class="joiningAlert"></p>
+        <div class="typing"></div>
+    </ul>
+    <form id="msgForm">
+        <input type="text" id="msgInput" name="msgInput">
+        <button>Send</button>
+    </form>
+  </div>
+
+    <script defer src="socket.io/socket.io.js"></script>
+    <script defer src="/js/groupChat.js"></script>
+</body>
+</html>

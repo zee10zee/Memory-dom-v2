@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/styles/oneToOne.css">
+    <title>Document</title>
+</head>
+<body>
+    <main >
+        <% if(locals.receiver){ %>
+            <div class="userId" reciepient-user-id="<%=receiver.id%>"></div>
+         <h1>chat with <%= receiver.firstname%></h1>
+         <% } %>
+        <div class="container-private-chat"></div>
+        <form id="privateForm">
+            <input type="text" id="privateInput" name="privateInput">
+            <input type="submit">
+        </form>
+    </main>
+    <script defer src="/socket.io/socket.io.js"></script>
+    <script defer src="/js/privateChat.js"></script>
+</body>
+</html>

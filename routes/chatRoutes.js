@@ -5,7 +5,7 @@ const router  = express.Router()
 
 // chat home
 router.get('/chatroom',authenticate,(req,res)=>{
-    res.render('chat.ejs')
+    res.render('groupChat.ejs')
 })
 
 router.get('/oneToOneChat/:receiverId', authenticate, async(req,res)=>{
@@ -15,7 +15,7 @@ router.get('/oneToOneChat/:receiverId', authenticate, async(req,res)=>{
     const loggedInUser = await pool.query('SELECT * FROM users where id = $1', [req.session.userId])
     console.log('reciever' + receiver.rows[0].firstname,' logged in user '+ loggedInUser.rows[0].firstname)
  
-    res.render('oneToOnePage.ejs', {
+    res.render('privateChat.ejs', {
         receiver : receiver.rows[0],
         loggedInUser : loggedInUser.rows[0]
     })

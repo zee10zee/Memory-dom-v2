@@ -13,7 +13,7 @@ io.use(sharedSession(sessionMiddleware,{
     autoSave : true
 }))
 
-const activeUsers = new Map()
+let activeUsers = new Map()
 io.on('connection', async(socket)=>{
     const session = socket.handshake.session;
 
@@ -21,18 +21,19 @@ io.on('connection', async(socket)=>{
         console.log('unauthenticated user attempted socket connection')
         return socket.disconnect()
     }
+
     let user = await pool.query('SELECT * FROM users where id = $1', [session.userId])
     const loggedInUser = user.rows[0]
     console.log(loggedInUser.firstname , ' connected')
-    const user_info = {
+    let user_info = {
         username : loggedInUser.firstname,
         id : loggedInUser.id,
         user_profile : loggedInUser.profilepicture
     }
 
-    socket.on('user-join', (user_info) =>{
-        activeUsers.set(socket.id, user_info)
-    })
+    //  save the socket of logged in users into their id
+        activeUsers.set(loggedInUser.id, socket.id)
+        console.log('active users ', activeUsers)
     // creating a room 
     const userRoom = `chatRoom`
     // tells the socket to join the connected socket(user )to the userRoom
@@ -44,16 +45,14 @@ io.on('connection', async(socket)=>{
     socket.data.room = userRoom
 
     // one to one chat //
-
-    socket.on('send-private-message', (data)=>{
-        console.log(data)
-        const senderInfo = {
+    socket.on('send-private-message', (sentData)=>{
+        const reciepientSocketId = activeUsers.get(sentData.userid)
+        const messageDetails = {
+            message : sentData.message,
             from : loggedInUser.firstname,
-            msg : data.msg,
         }
-        socket.to(data.reciepientId).emit('receive-message', senderInfo)
+        socket.to(reciepientSocketId).emit('received_private-message',messageDetails)
     })
-
     // ***8********************
 //   on sending message
     socket.on('send massage', (msg)=>{
